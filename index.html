@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        .document-card {
+            background-color: #2196f3;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .document-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .document-state {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196f3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div id="loadingOverlay">
+    <div class="loader"></div>
+</div>
+
+<h1>Dashboard</h1>
+
+<button onclick="handleClick()">Load sample documents</button>
+<button onclick="deleteDocsBtn()">Delete sample documents</button>
+
+<div id="documents-container"></div>
+
+<script>
+
+    function handleClick() {
+       const requestId = generateUUID();
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        try {
+            const request = {
+                id: requestId,
+                function: "getSampleDocuments",
+                data: null
+            };
+
+            window.issuance.handleRequest(JSON.stringify(request));
+
+            const timeoutId = setTimeout(() => {
+                if (promiseMap.has(requestId)) {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    console.error('Bridge response timeout');
+                    promiseMap.delete(requestId);
+                }
+            }, 30000);
+
+            promiseMap.set(requestId, {
+                resolve: (response) => {
+                    clearTimeout(timeoutId);
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    if (response.status === "SUCCESS") {
+                        displayDocuments(response.data.documents);
+                    } else {
+                        console.error("Error loading documents:", response.error);
+                    }
+                }
+            });
+
+        } catch (error) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            console.error("Failed to send request:", error);
+        }
+    }
+
+    function deleteDocsBtn() {
+        const requestId = generateUUID();
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        try {
+            const request = {
+                id: requestId,
+                function: "deleteSampleDocuments",
+                data: null
+            };
+
+            window.issuance.handleRequest(JSON.stringify(request));
+
+            const timeoutId = setTimeout(() => {
+                if (promiseMap.has(requestId)) {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    console.error('Bridge response timeout');
+                    promiseMap.delete(requestId);
+                }
+            }, 30000);
+
+            promiseMap.set(requestId, {
+                resolve: (response) => {
+                    clearTimeout(timeoutId);
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    if (response.status === "SUCCESS") {
+                        displayDocuments(response.data.documents);
+                    } else {
+                        console.error("Error loading documents:", response.error);
+                    }
+                }
+            });
+
+        } catch (error) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            console.error("Failed to send request:", error);
+        }
+    }
+
+    const promiseMap = new Map();
+
+    function loadDocuments() {
+        const requestId = generateUUID();
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        try {
+            const request = {
+                id: requestId,
+                function: "getDocuments",
+                data: null
+            };
+
+            window.dashboard.handleRequest(JSON.stringify(request));
+
+            const timeoutId = setTimeout(() => {
+                if (promiseMap.has(requestId)) {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    console.error('Bridge response timeout');
+                    promiseMap.delete(requestId);
+                }
+            }, 30000);
+
+            promiseMap.set(requestId, {
+                resolve: (response) => {
+                    clearTimeout(timeoutId);
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    if (response.status === "SUCCESS") {
+                        displayDocuments(response.data.documents);
+                    } else {
+                        console.error("Error loading documents:", response.error);
+                    }
+                }
+            });
+
+        } catch (error) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            console.error("Failed to send request:", error);
+        }
+    }
+
+    // Existing displayDocuments and generateUUID functions
+
+    function displayDocuments(documents) {
+            const container = document.getElementById('documents-container');
+            container.innerHTML = '';
+
+            documents.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = 'document-card';
+
+                const title = document.createElement('div');
+                title.className = 'document-title';
+                title.textContent = doc.name;
+
+                const state = document.createElement('div');
+                state.className = 'document-state';
+                state.textContent = doc.issuanceState;
+
+                card.appendChild(title);
+                card.appendChild(state);
+                container.appendChild(card);
+            });
+        }
+
+    window.addEventListener('lx-embed-response', (event) => {
+        const promise = promiseMap.get(event.detail.id);
+        if (promise) {
+            promise.resolve(event.detail);
+            promiseMap.delete(event.detail.id);
+        }
+    });
+
+    // Load documents when page loads
+    loadDocuments();
+
+
+    function generateUUID() {
+return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+});
+}
+</script>
+</body>
+</html>
